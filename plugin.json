@@ -1,0 +1,23 @@
+{
+  "slug": "Skiff",
+  "name": "Skiff",
+  "version": "2.0.0",
+  "license": "proprietary",
+  "brand": "Skiff",
+  "author": "Beto",
+  "authorEmail": "",
+  "authorUrl": "",
+  "pluginUrl": "",
+  "manualUrl": "",
+  "sourceUrl": "",
+  "donateUrl": "",
+  "changelogUrl": "",
+  "modules": [
+    {
+      "slug": "Skiff",
+      "name": "Skiff",
+      "description": "Dual probability skipper: each gate passes with a probability set by knob or CV, with exclusive mode",
+      "tags": ["Random", "Logic", "Dual"]
+    }
+  ]
+}
