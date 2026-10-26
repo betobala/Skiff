@@ -150,9 +150,12 @@ static std::shared_ptr<window::Font> pluginFont(const char* file) {
 // ---------------------------------------------------------------- layout (mm), 4 HP
 static const float W = 20.32f;
 static const float CX = W / 2.f;
-static const float CH_TOP[2] = {11.0f, 64.0f};  // top of each channel group
-static const float KNOB_DY = 8.5f, CV_DY = 22.0f, IN_DY = 31.5f, OUT_DY = 45.0f;
-static const float GROUP_H = 39.4f;  // knob, CV and input; the output plate follows
+// after concept light v1: one outlined group per channel, the output on a black plate inside it
+static const float CH_TOP[2] = {14.0f, 67.2f};  // top of each channel group
+static const float GROUP_H = 51.6f;
+static const float KNOB_DY = 8.0f, CV_DY = 21.0f, IN_DY = 30.8f, OUT_DY = 43.4f;
+static const float PLATE_DY = 38.4f, PLATE_H = 11.4f;
+static const float JACK_X = 9.4f, LED_X = 16.0f;  // jacks a little left, LEDs beside them
 static const float KNOB_R = 5.0f;
 
 /** Small round LED in the accent colour. */
@@ -209,30 +212,23 @@ struct PanelArt : Widget {
 
 		for (int i = 0; i < 2; i++) {
 			float top = CH_TOP[i];
-			// knob, CV and input in an outlined group; the output on the black plate below it
 			nvgBeginPath(vg);
-			nvgRoundedRect(vg, mm2px(1.6f), mm2px(top), mm2px(W - 3.2f), mm2px(GROUP_H), mm2px(2.2f));
+			nvgRoundedRect(vg, mm2px(1.4f), mm2px(top), mm2px(W - 2.8f), mm2px(GROUP_H), mm2px(2.2f));
 			nvgFillColor(vg, k.group);
 			nvgFill(vg);
 			nvgStrokeColor(vg, k.line);
 			nvgStrokeWidth(vg, mm2px(0.3f));
 			nvgStroke(vg);
 			nvgBeginPath(vg);
-			nvgRoundedRect(vg, mm2px(1.6f), mm2px(top + GROUP_H + 0.8f), mm2px(W - 3.2f), mm2px(11.0f), mm2px(2.2f));
+			nvgRoundedRect(vg, mm2px(2.6f), mm2px(top + PLATE_DY), mm2px(W - 5.2f), mm2px(PLATE_H), mm2px(1.8f));
 			nvgFillColor(vg, k.plate);
 			nvgFill(vg);
 		}
 
-		std::shared_ptr<window::Font> logo = pluginFont("Syne-Bold.ttf");
 		std::shared_ptr<window::Font> bold = pluginFont("SpaceMono-Bold.ttf");
-		if (!logo || !bold)
+		if (!bold)
 			return;
 		nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-		nvgFontFaceId(vg, logo->handle);
-		nvgFontSize(vg, mm2px(4.4f));
-		nvgTextLetterSpacing(vg, -mm2px(0.1f));
-		nvgFillColor(vg, k.ink);
-		nvgText(vg, mm2px(CX), mm2px(5.6f), "skiff", NULL);
 		nvgTextLetterSpacing(vg, mm2px(0.06f));
 
 		nvgFontFaceId(vg, bold->handle);
@@ -240,11 +236,35 @@ struct PanelArt : Widget {
 		for (int i = 0; i < 2; i++) {
 			float top = CH_TOP[i];
 			pill(vg, Vec(CX, top + KNOB_DY + KNOB_R + 2.4f), string::f("PROB %d", i + 1).c_str(), k.pill, k.pillInk);
-			pill(vg, Vec(CX, top + CV_DY + 4.6f), "CV", k.pill, k.pillInk);
-			pill(vg, Vec(CX, top + IN_DY + 4.6f), i == 0 ? "IN" : "IN 2", k.pill, k.pillInk);
-			pill(vg, Vec(CX, top + OUT_DY + 4.2f), "OUT", k.plateInk, k.plate);
+			pill(vg, Vec(JACK_X, top + CV_DY + 4.5f), "CV", k.pill, k.pillInk);
+			pill(vg, Vec(JACK_X, top + IN_DY + 4.5f), i == 0 ? "IN" : "IN 2", k.pill, k.pillInk);
+			pill(vg, Vec(JACK_X, top + OUT_DY + 4.1f), "OUT", k.plateInk, k.plate);
 		}
 		nvgTextLetterSpacing(vg, 0.f);
+	}
+};
+
+/** The logotype, one SVG per theme. */
+struct LogoWidget : TransparentWidget {
+	Skiff* module = nullptr;
+	std::shared_ptr<window::Svg> svg[2];
+
+	void load(float widthMm) {
+		svg[0] = window::Svg::load(asset::plugin(pluginInstance, "res/logo_bone.svg"));
+		svg[1] = window::Svg::load(asset::plugin(pluginInstance, "res/logo_slate.svg"));
+		float w = svg[0]->handle->width, h = svg[0]->handle->height;
+		box.size = Vec(mm2px(widthMm), mm2px(widthMm) * h / w);
+	}
+
+	void draw(const DrawArgs& args) override {
+		int i = (module && module->theme == 1) ? 1 : 0;
+		if (!svg[i])
+			return;
+		float sc = box.size.x / svg[i]->handle->width;
+		nvgSave(args.vg);
+		nvgScale(args.vg, sc, sc);
+		window::svgDraw(args.vg, svg[i]->handle);
+		nvgRestore(args.vg);
 	}
 };
 
@@ -261,19 +281,26 @@ struct SkiffWidget : ModuleWidget {
 		addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, 0)));
 		addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
 
+		// the logo sits under the top screw
+		LogoWidget* logo = new LogoWidget;
+		logo->module = module;
+		logo->load(12.4f);
+		logo->box.pos = Vec((box.size.x - logo->box.size.x) / 2, mm2px(5.6f));
+		addChild(logo);
+
 		for (int i = 0; i < 2; i++) {
 			float top = CH_TOP[i];
 			addParam(fms::knob(mm2px(Vec(CX, top + KNOB_DY)), module, Skiff::PROB_PARAM + i, KNOB_R));
-			addInput(createInputCentered<fms::Jack>(mm2px(Vec(CX, top + CV_DY)), module, Skiff::CV_INPUT + i));
-			addInput(createInputCentered<fms::Jack>(mm2px(Vec(CX, top + IN_DY)), module, Skiff::GATE_INPUT + i));
-			addOutput(createOutputCentered<fms::Jack>(mm2px(Vec(CX, top + OUT_DY)), module, Skiff::GATE_OUTPUT + i));
+			addInput(createInputCentered<fms::Jack>(mm2px(Vec(JACK_X, top + CV_DY)), module, Skiff::CV_INPUT + i));
+			addInput(createInputCentered<fms::Jack>(mm2px(Vec(JACK_X, top + IN_DY)), module, Skiff::GATE_INPUT + i));
+			addOutput(createOutputCentered<fms::Jack>(mm2px(Vec(JACK_X, top + OUT_DY)), module, Skiff::GATE_OUTPUT + i));
 			// LEDs beside the gate jacks, like the original
 			for (int j = 0; j < 2; j++) {
 				Led* led = new Led;
 				led->module = module;
 				led->lightId = (j == 0 ? Skiff::IN_LIGHT : Skiff::OUT_LIGHT) + i;
 				led->box.size = mm2px(Vec(2.2f, 2.2f));
-				Vec c = mm2px(Vec(CX + 6.3f, top + (j == 0 ? IN_DY : OUT_DY) - 2.6f));
+				Vec c = mm2px(Vec(LED_X, top + (j == 0 ? IN_DY : OUT_DY)));
 				led->box.pos = c.minus(led->box.size.div(2));
 				addChild(led);
 			}
