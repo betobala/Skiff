@@ -3,6 +3,7 @@
 #include <rack.hpp>
 #include "Skip.hpp"
 #include "Controls4ms.hpp"
+#include "Stencil.hpp"
 
 using namespace rack;
 
@@ -92,51 +93,14 @@ struct Skiff : Module {
 };
 
 // ---------------------------------------------------------------- themes
-struct STheme {
-	NVGcolor panel, ink, line, group, plate, plateInk, pill, pillInk;
-};
-static const char* const THEME_NAMES[2] = {"Bone", "Slate"};
-
-static STheme sTheme(int t) {
-	STheme k;
-	if (t == 1) {
-		k.panel = nvgRGB(0x17, 0x19, 0x1B);
-		k.ink = nvgRGB(0xE6, 0xE8, 0xE8);
-		k.line = nvgRGB(0x6B, 0x6F, 0x75);
-		k.group = nvgRGB(0x1B, 0x1D, 0x20);
-		k.plate = nvgRGB(0x0E, 0x10, 0x12);
-		k.plateInk = nvgRGB(0xE6, 0xE8, 0xE8);
-		k.pill = nvgRGB(0xD6, 0xD8, 0xD8);
-		k.pillInk = nvgRGB(0x17, 0x19, 0x1B);
-	}
-	else {
-		k.panel = nvgRGB(0xE8, 0xE6, 0xE1);
-		k.ink = nvgRGB(0x0F, 0x12, 0x16);
-		k.line = nvgRGB(0x0F, 0x12, 0x16);
-		k.group = nvgRGB(0xEE, 0xEC, 0xE7);
-		k.plate = nvgRGB(0x14, 0x16, 0x1A);
-		k.plateInk = nvgRGB(0xF6, 0xF4, 0xEF);
-		k.pill = nvgRGB(0x14, 0x16, 0x1A);
-		k.pillInk = nvgRGB(0xF6, 0xF4, 0xEF);
-	}
-	return k;
-}
+// betobullet stencil (docs/art/STYLE.md): theme 0 = black panel, 1 = white panel
+using bb::THEME_NAMES;
 
 namespace fms {
 const Colors& colors(const engine::Module* m) {
-	// accent: sea green
-	static const Colors bone = {
-		nvgRGB(0x11, 0x11, 0x11), nvgRGB(0x3A, 0x3A, 0x3A), nvgRGB(0xF6, 0xF4, 0xEF), nvgRGB(0x0F, 0x12, 0x16),
-		nvgRGB(0xD3, 0xD3, 0xD0), nvgRGB(0xF7, 0xF7, 0xF5), nvgRGB(0x8E, 0x8E, 0x8A), nvgRGB(0x5C, 0x5C, 0x5A), nvgRGB(0x05, 0x05, 0x05),
-		nvgRGB(0x1B, 0x1E, 0x24), nvgRGB(0x3A, 0x3D, 0x44), nvgRGB(0x12, 0xC0, 0x8A), nvgRGB(0x7C, 0xF2, 0xC6), nvgRGB(0x0F, 0x12, 0x16),
-		nvgRGB(0xFB, 0xFB, 0xF9)};
-	static const Colors slate = {
-		nvgRGB(0x0B, 0x0B, 0x0D), nvgRGB(0x3A, 0x3B, 0x3F), nvgRGB(0xF6, 0xF4, 0xEF), nvgRGB(0xE6, 0xE8, 0xE8),
-		nvgRGB(0xD3, 0xD3, 0xD0), nvgRGB(0xF7, 0xF7, 0xF5), nvgRGB(0x8E, 0x8E, 0x8A), nvgRGB(0x5C, 0x5C, 0x5A), nvgRGB(0x05, 0x05, 0x05),
-		nvgRGB(0x0B, 0x0B, 0x0D), nvgRGB(0x2A, 0x2C, 0x30), nvgRGB(0x2F, 0xD8, 0xA0), nvgRGB(0x9A, 0xFF, 0xD8), nvgRGB(0x6B, 0x6F, 0x75),
-		nvgRGB(0xFB, 0xFB, 0xF9)};
+	static const Colors black = bb::controlColors(0), white = bb::controlColors(1);
 	int t = m ? static_cast<const Skiff*>(m)->theme : 0;
-	return t == 1 ? slate : bone;
+	return t == 1 ? white : black;
 }
 }  // namespace fms
 
@@ -191,80 +155,40 @@ struct Led : TransparentWidget {
 struct PanelArt : Widget {
 	Skiff* module = nullptr;
 
-	void pill(NVGcontext* vg, Vec mm, const char* s, NVGcolor fill, NVGcolor ink) {
-		float w = std::max(mm2px(7.0f), nvgTextBounds(vg, 0, 0, s, NULL, NULL) + mm2px(2.0f));
-		float h = mm2px(3.0f);
-		nvgBeginPath(vg);
-		nvgRoundedRect(vg, mm2px(mm.x) - w / 2, mm2px(mm.y) - h / 2, w, h, h / 2);
-		nvgFillColor(vg, fill);
-		nvgFill(vg);
-		nvgFillColor(vg, ink);
-		nvgText(vg, mm2px(mm.x), mm2px(mm.y) + mm2px(0.1f), s, NULL);
-	}
-
 	void draw(const DrawArgs& args) override {
-		STheme k = sTheme(module ? module->theme : 0);
+		bb::Ink k = bb::ink(module ? module->theme : 0);
+		bb::Ink inv = {k.fg, k.bg};
 		NVGcontext* vg = args.vg;
 		nvgBeginPath(vg);
 		nvgRect(vg, 0, 0, box.size.x, box.size.y);
-		nvgFillColor(vg, k.panel);
+		nvgFillColor(vg, k.bg);
 		nvgFill(vg);
 
 		for (int i = 0; i < 2; i++) {
 			float top = CH_TOP[i];
-			nvgBeginPath(vg);
-			nvgRoundedRect(vg, mm2px(1.4f), mm2px(top), mm2px(W - 2.8f), mm2px(GROUP_H), mm2px(2.2f));
-			nvgFillColor(vg, k.group);
-			nvgFill(vg);
-			nvgStrokeColor(vg, k.line);
-			nvgStrokeWidth(vg, mm2px(0.3f));
-			nvgStroke(vg);
-			nvgBeginPath(vg);
-			nvgRoundedRect(vg, mm2px(2.6f), mm2px(top + PLATE_DY), mm2px(W - 5.2f), mm2px(PLATE_H), mm2px(1.8f));
-			nvgFillColor(vg, k.plate);
+			bb::notchedFrame(vg, Rect(Vec(1.2f, top), Vec(W - 2.4f, GROUP_H)), k, 2.2f, 1.4f);
+			bb::chamferPath(vg, Rect(Vec(2.4f, top + PLATE_DY), Vec(W - 4.8f, PLATE_H)), 1.6f);
+			nvgFillColor(vg, k.fg);
 			nvgFill(vg);
 		}
+		// three cartridges between the channels
+		bb::bullets(vg, CX - 4.0f, CX + 4.0f, CH_TOP[1] - 0.5f, 2.2f, 3, k);
 
-		std::shared_ptr<window::Font> bold = pluginFont("SpaceMono-Bold.ttf");
-		if (!bold)
+		std::shared_ptr<window::Font> stencil = pluginFont("BlackOpsOne-Regular.ttf");
+		if (!stencil)
 			return;
-		nvgTextAlign(vg, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
-		nvgTextLetterSpacing(vg, mm2px(0.06f));
-
-		nvgFontFaceId(vg, bold->handle);
-		nvgFontSize(vg, mm2px(2.3f));
+		bb::title(vg, Rect(Vec(1.6f, 5.6f), Vec(W - 3.2f, 6.0f)), "SKIFF", stencil->handle, k, 3.4f);
+		nvgFontFaceId(vg, stencil->handle);
+		nvgFontSize(vg, mm2px(2.2f));
+		nvgTextLetterSpacing(vg, mm2px(0.08f));
 		for (int i = 0; i < 2; i++) {
 			float top = CH_TOP[i];
-			pill(vg, Vec(CX, top + KNOB_DY + KNOB_R + 2.4f), string::f("PROB %d", i + 1).c_str(), k.pill, k.pillInk);
-			pill(vg, Vec(JACK_X, top + CV_DY + 4.5f), "CV", k.pill, k.pillInk);
-			pill(vg, Vec(JACK_X, top + IN_DY + 4.5f), i == 0 ? "IN" : "IN 2", k.pill, k.pillInk);
-			pill(vg, Vec(JACK_X, top + OUT_DY + 4.1f), "OUT", k.plateInk, k.plate);
+			bb::plate(vg, Vec(CX, top + KNOB_DY + KNOB_R + 2.4f), string::f("PROB %d", i + 1).c_str(), k, 12.0f);
+			bb::plate(vg, Vec(JACK_X, top + CV_DY + 4.5f), "CV", k, 6.4f, 2.8f);
+			bb::plate(vg, Vec(JACK_X, top + IN_DY + 4.5f), i == 0 ? "IN" : "IN 2", k, 6.4f, 2.8f);
+			bb::plate(vg, Vec(JACK_X, top + OUT_DY + 4.1f), "OUT", inv, 6.4f, 2.8f);
 		}
 		nvgTextLetterSpacing(vg, 0.f);
-	}
-};
-
-/** The logotype, one SVG per theme. */
-struct LogoWidget : TransparentWidget {
-	Skiff* module = nullptr;
-	std::shared_ptr<window::Svg> svg[2];
-
-	void load(float widthMm) {
-		svg[0] = window::Svg::load(asset::plugin(pluginInstance, "res/logo_bone.svg"));
-		svg[1] = window::Svg::load(asset::plugin(pluginInstance, "res/logo_slate.svg"));
-		float w = svg[0]->handle->width, h = svg[0]->handle->height;
-		box.size = Vec(mm2px(widthMm), mm2px(widthMm) * h / w);
-	}
-
-	void draw(const DrawArgs& args) override {
-		int i = (module && module->theme == 1) ? 1 : 0;
-		if (!svg[i])
-			return;
-		float sc = box.size.x / svg[i]->handle->width;
-		nvgSave(args.vg);
-		nvgScale(args.vg, sc, sc);
-		window::svgDraw(args.vg, svg[i]->handle);
-		nvgRestore(args.vg);
 	}
 };
 
@@ -280,13 +204,6 @@ struct SkiffWidget : ModuleWidget {
 
 		addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, 0)));
 		addChild(createWidget<ScrewSilver>(Vec(RACK_GRID_WIDTH, RACK_GRID_HEIGHT - RACK_GRID_WIDTH)));
-
-		// the logo sits under the top screw
-		LogoWidget* logo = new LogoWidget;
-		logo->module = module;
-		logo->load(12.4f);
-		logo->box.pos = Vec((box.size.x - logo->box.size.x) / 2, mm2px(5.6f));
-		addChild(logo);
 
 		for (int i = 0; i < 2; i++) {
 			float top = CH_TOP[i];
