@@ -168,19 +168,21 @@ struct PanelArt : Widget {
 			bb::outRing(vg, Vec(JACK_X, CH_TOP[i] + OUT_DY), k);
 
 		std::shared_ptr<window::Font> stencil = pluginFont("BlackOpsOne-Regular.ttf");
-		std::shared_ptr<window::Font> bold = pluginFont("SpaceMono-Bold.ttf");
+		std::shared_ptr<window::Font> bold = pluginFont("BebasNeue-Regular.ttf");
 		if (!stencil || !bold)
 			return;
 		bb::nameplate(vg, CX, 7.6f, "SKIFF", stencil->handle, k, 3.6f);
 		nvgFontFaceId(vg, bold->handle);
-		nvgFontSize(vg, mm2px(2.4f));
+		nvgFontSize(vg, mm2px(4.8f));
 		nvgTextLetterSpacing(vg, mm2px(0.08f));
 		for (int i = 0; i < 2; i++) {
 			float top = CH_TOP[i];
 			bb::label(vg, Vec(CX, top + KNOB_DY + KNOB_R + 2.6f), string::f("PROB %d", i + 1).c_str(), k.fg);
-			bb::label(vg, Vec(JACK_X, top + CV_DY + 4.8f), "CV", k.fg);
-			bb::label(vg, Vec(JACK_X, top + IN_DY + 4.8f), i == 0 ? "IN" : "IN 2", k.fg);
-			bb::label(vg, Vec(JACK_X, top + OUT_DY + 5.8f), "OUT", k.red);
+			nvgFontSize(vg, mm2px(3.6f));
+			bb::label(vg, Vec(JACK_X, top + CV_DY + 5.2f), "CV", k.fg);
+			bb::label(vg, Vec(JACK_X, top + IN_DY + 5.2f), i == 0 ? "IN" : "IN 2", k.fg);
+			bb::label(vg, Vec(JACK_X, top + OUT_DY + 6.6f), "OUT", k.red);
+			nvgFontSize(vg, mm2px(4.8f));
 		}
 		nvgTextLetterSpacing(vg, 0.f);
 	}
