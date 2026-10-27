@@ -2,7 +2,7 @@
 // Recreated from the published behaviour of the Ladik S-090 (see src/Skip.hpp).
 #include <rack.hpp>
 #include "Skip.hpp"
-#include "Controls4ms.hpp"
+#include "Controls.hpp"
 #include "Stencil.hpp"
 
 using namespace rack;
