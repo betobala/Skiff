@@ -171,7 +171,7 @@ struct PanelArt : Widget {
 		std::shared_ptr<window::Font> bold = pluginFont("BebasNeue-Regular.ttf");
 		if (!stencil || !bold)
 			return;
-		bb::nameplate(vg, CX, 7.6f, "SKIFF", stencil->handle, k, 3.6f);
+		bb::nameplate(vg, CX, 7.0f, "SKIFF", stencil->handle, k, 3.6f, bb::MARK_PULSES, 15.0f, 3.6f);
 		nvgFontFaceId(vg, bold->handle);
 		nvgFontSize(vg, mm2px(4.8f));
 		nvgTextLetterSpacing(vg, mm2px(0.08f));
