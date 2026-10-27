@@ -157,36 +157,30 @@ struct PanelArt : Widget {
 
 	void draw(const DrawArgs& args) override {
 		bb::Ink k = bb::ink(module ? module->theme : 0);
-		bb::Ink inv = {k.fg, k.bg};
 		NVGcontext* vg = args.vg;
 		nvgBeginPath(vg);
 		nvgRect(vg, 0, 0, box.size.x, box.size.y);
 		nvgFillColor(vg, k.bg);
 		nvgFill(vg);
 
-		for (int i = 0; i < 2; i++) {
-			float top = CH_TOP[i];
-			bb::notchedFrame(vg, Rect(Vec(1.2f, top), Vec(W - 2.4f, GROUP_H)), k, 2.2f, 1.4f);
-			bb::chamferPath(vg, Rect(Vec(2.4f, top + PLATE_DY), Vec(W - 4.8f, PLATE_H)), 1.6f);
-			nvgFillColor(vg, k.fg);
-			nvgFill(vg);
-		}
-		// three cartridges between the channels
-		bb::bullets(vg, CX - 4.0f, CX + 4.0f, CH_TOP[1] - 0.5f, 2.2f, 3, k);
+		bb::rule(vg, 2.4f, W - 2.4f, CH_TOP[1] - 1.0f, k);
+		for (int i = 0; i < 2; i++)
+			bb::outRing(vg, Vec(JACK_X, CH_TOP[i] + OUT_DY), k);
 
 		std::shared_ptr<window::Font> stencil = pluginFont("BlackOpsOne-Regular.ttf");
-		if (!stencil)
+		std::shared_ptr<window::Font> bold = pluginFont("SpaceMono-Bold.ttf");
+		if (!stencil || !bold)
 			return;
-		bb::title(vg, Rect(Vec(1.6f, 5.6f), Vec(W - 3.2f, 6.0f)), "SKIFF", stencil->handle, k, 3.4f);
-		nvgFontFaceId(vg, stencil->handle);
-		nvgFontSize(vg, mm2px(2.2f));
+		bb::nameplate(vg, CX, 7.6f, "SKIFF", stencil->handle, k, 3.6f);
+		nvgFontFaceId(vg, bold->handle);
+		nvgFontSize(vg, mm2px(2.4f));
 		nvgTextLetterSpacing(vg, mm2px(0.08f));
 		for (int i = 0; i < 2; i++) {
 			float top = CH_TOP[i];
-			bb::plate(vg, Vec(CX, top + KNOB_DY + KNOB_R + 2.4f), string::f("PROB %d", i + 1).c_str(), k, 12.0f);
-			bb::plate(vg, Vec(JACK_X, top + CV_DY + 4.5f), "CV", k, 6.4f, 2.8f);
-			bb::plate(vg, Vec(JACK_X, top + IN_DY + 4.5f), i == 0 ? "IN" : "IN 2", k, 6.4f, 2.8f);
-			bb::plate(vg, Vec(JACK_X, top + OUT_DY + 4.1f), "OUT", inv, 6.4f, 2.8f);
+			bb::label(vg, Vec(CX, top + KNOB_DY + KNOB_R + 2.6f), string::f("PROB %d", i + 1).c_str(), k.fg);
+			bb::label(vg, Vec(JACK_X, top + CV_DY + 4.8f), "CV", k.fg);
+			bb::label(vg, Vec(JACK_X, top + IN_DY + 4.8f), i == 0 ? "IN" : "IN 2", k.fg);
+			bb::label(vg, Vec(JACK_X, top + OUT_DY + 5.8f), "OUT", k.red);
 		}
 		nvgTextLetterSpacing(vg, 0.f);
 	}
