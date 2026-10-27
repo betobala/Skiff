@@ -3,6 +3,7 @@
 #include <rack.hpp>
 #include "Skip.hpp"
 #include "Controls.hpp"
+#define BB_MODULE_COLOUR nvgRGB(0xCD, 0xB4, 0x8A)
 #include "Stencil.hpp"
 
 using namespace rack;
@@ -88,7 +89,7 @@ struct Skiff : Module {
 		if (json_t* j = json_object_get(root, "smooth"))
 			smooth = json_boolean_value(j);
 		if (json_t* j = json_object_get(root, "theme"))
-			theme = clamp((int) json_integer_value(j), 0, 1);
+			theme = clamp((int) json_integer_value(j), 0, 3);
 	}
 };
 
@@ -98,9 +99,9 @@ using bb::THEME_NAMES;
 
 namespace fms {
 const Colors& colors(const engine::Module* m) {
-	static const Colors black = bb::controlColors(0), white = bb::controlColors(1);
+	static const Colors themes[4] = {bb::controlColors(0), bb::controlColors(1), bb::controlColors(2), bb::controlColors(3)};
 	int t = m ? static_cast<const Skiff*>(m)->theme : 0;
-	return t == 1 ? white : black;
+	return themes[t < 0 || t > 3 ? 0 : t];
 }
 }  // namespace fms
 
@@ -228,7 +229,7 @@ struct SkiffWidget : ModuleWidget {
 		menu->addChild(createMenuLabel("Jumpers"));
 		menu->addChild(createBoolPtrMenuItem("Exclusive (one output per pulse)", "", &m->exclusive));
 		menu->addChild(createBoolPtrMenuItem("Regular randomness (0 % / 100 % not exact)", "", &m->smooth));
-		menu->addChild(createIndexPtrSubmenuItem("Theme", std::vector<std::string>(THEME_NAMES, THEME_NAMES + 2), &m->theme));
+		menu->addChild(createIndexPtrSubmenuItem("Theme", std::vector<std::string>(THEME_NAMES, THEME_NAMES + bb::NUM_THEMES), &m->theme));
 	}
 };
 
